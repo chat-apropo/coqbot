@@ -78,9 +78,10 @@ def run_command(msg: Message, text: str):
         t.start()
         t.join(2)
         if t.is_alive():
-            t.stop()
             coqtop: replwrap.REPLWrapper = user_repls[msg.nick]
             coqtop.child.kill(signal.SIGINT)
+            user_repls.pop(msg.nick, None)
+            t.stop()
             reply(msg, "Command timed out. I Cleared your environment")
 
     threading.Thread(target=_run_command, args=(msg, text)).start()
