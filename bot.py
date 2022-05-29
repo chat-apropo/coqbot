@@ -84,8 +84,16 @@ async def onConnect(bot: IrcBot):
                 channel, text = match.groups()
                 await bot.send_message(text, channel)
 
+    async def update_loop():
+        """Update cache to eliminate invalid keys."""
+        while True:
+            global user_repls
+            user_repls.pop(None, None)
+            await trio.sleep(10)
+
     async with trio.open_nursery() as nursery:
         nursery.start_soon(listen_loop, FIFO, message_handler)
+        nursery.start_soon(update_loop)
 
 if __name__ == "__main__":
     bot = IrcBot(SERVER, PORT, NICK, use_ssl=SSL)
