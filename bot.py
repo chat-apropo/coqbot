@@ -35,6 +35,8 @@ def reply(msg: Message, text: str):
     """Reply to a message."""
     with open(FIFO, "w") as f:
         for line in text.splitlines():
+            if not line.strip():
+                continue
             line = f"<{msg.nick}> {ansi2irc(line)}"
             f.write(f"[[{msg.channel}]] {line}\n")
 
@@ -49,7 +51,6 @@ def run_command(msg: Message, text: str):
         reply(msg, user_repls[user].run_command(text, timeout=4))
 
     multiprocessing.Process(target=_run_command, args=(msg, text)).start()
-
 
 
 @utils.arg_command("clear", "Clear environment")
