@@ -1,5 +1,6 @@
 import re
 import trio
+import signal
 from pexpect import replwrap
 from cachetools import TTLCache
 from tempfile import NamedTemporaryFile
@@ -44,18 +45,43 @@ def reply(msg: Message, text: str):
             f.write(f"[[{msg.channel}]] {line}\n")
 
 
+class StoppableThread(threading.Thread):
+    """Thread class with a stop() method. The thread itself has to check
+    regularly for the stopped() condition."""
+
+    def __init__(self, *args, **kwargs):
+        super(StoppableThread, self).__init__(*args, **kwargs)
+        self._stop_event = threading.Event()
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
+
+
 def run_command(msg: Message, text: str):
 
     def _run_command(msg: Message, text: str):
-        global user_repls
-        info(f"{user_repls=}")
-        user = msg.nick
-        if user not in user_repls:
-            info(f"Creating new repl for {user}")
-            user_repls[user] = replwrap.REPLWrapper(
-                COQTOP_CMD, "Coq <", prompt_change=None)
-        info(f"Running command for {user}")
-        reply(msg, user_repls[user].run_command(text, timeout=2))
+        def __run_command(msg: Message, text: str):
+            global user_repls
+            info(f"{user_repls=}")
+            user = msg.nick
+            if user not in user_repls:
+                info(f"Creating new repl for {user}")
+                user_repls[user] = replwrap.REPLWrapper(
+                    COQTOP_CMD, "Coq <", prompt_change=None)
+            info(f"Running command for {user}")
+            reply(msg, user_repls[user].run_command(text, timeout=2))
+
+        t = StoppableThread(target=__run_command, args=(msg, text), daemon=True)
+        t.start()
+        t.join(2)
+        if t.is_alive():
+            t.stop()
+            coqtop: replwrap.REPLWrapper = user_repls[msg.nick]
+            coqtop.child.kill(signal.SIGINT)
+            reply(msg, "Command timed out. I Cleared your environment")
 
     threading.Thread(target=_run_command, args=(msg, text)).start()
 
