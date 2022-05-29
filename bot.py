@@ -36,7 +36,7 @@ def reply(msg: Message, text: str):
     with open(FIFO, "w") as f:
         for line in text.splitlines():
             line = f"<{msg.nick}> {ansi2irc(line)}"
-            f.write(f"[[{msg.channel}]] {line}")
+            f.write(f"[[{msg.channel}]] {line}\n")
 
 
 def run_command(msg: Message, text: str):
