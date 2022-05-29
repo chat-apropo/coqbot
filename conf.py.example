@@ -1,0 +1,8 @@
+SERVER="irc.example.com"
+PORT=6697
+SSL=True
+NICK="_coqbot"
+CHANNELS=["#bots"]
+PREFIX=">"
+COQTOP_CMD="coqtop"
+COQ_REPL_TTL = 60 * 30

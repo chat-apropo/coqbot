@@ -1,0 +1,13 @@
+pexpect==4.8.0
+ptyprocess==0.7.0
+async-generator==1.10
+attrs==21.4.0
+cachetools==5.1.0
+idna==3.3
+outcome==1.1.0
+pexpect==4.8.0
+ptyprocess==0.7.0
+re-ircbot==1.5.7
+sniffio==1.2.0
+sortedcontainers==2.4.0
+trio==0.19.0
