@@ -1,6 +1,8 @@
+import os
 import re
 import signal
 import threading
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import requests
@@ -28,7 +30,14 @@ info = utils.log
 
 FIFO = NamedTemporaryFile(mode='w+b', prefix='coq-repl-',
                           suffix='.fifo', delete=False).name
+COQ_EXPORT_DIR = "./coq-export/"
 
+# If export dir for coq doesn't exist, create it
+if not os.path.exists(COQ_EXPORT_DIR):
+    os.makedirs(COQ_EXPORT_DIR)
+
+# Change working directory to the directory of COQ_EXPORT_DIR
+os.chdir(COQ_EXPORT_DIR)
 
 def ansi2irc(text):
     """Convert ansi colors to irc colors."""
@@ -51,10 +60,14 @@ def reply(msg: Message, text: str):
 def paste(text):
     """Paste text to ix.io."""
     info(f"Pasting {text=}")
-    url = "http://ix.io"
-    payload = {'f:1=<-': text}
-    response = requests.request("POST", url, data=payload)
-    return response.text
+    try:
+        url = "http://ix.io"
+        payload = {'f:1=<-': text}
+        response = requests.request("POST", url, data=payload)
+        return response.text
+    except Exception as e:
+        info(f"Error {e=}")
+        return "Failed to paste"
 
 
 def read_paste(url):
@@ -68,13 +81,11 @@ def run_command(msg: Message, text: str):
     def _run_command(msg: Message, text: str):
         def __run_command(msg: Message, text: str):
             global user_repls, user_history
-            info(f"{user_repls=}")
             user = msg.nick
             if user not in user_repls:
                 info(f"Creating new repl for {user}")
                 user_repls[user] = replwrap.REPLWrapper(
                     COQTOP_CMD, "Coq <", prompt_change=None)
-            info(f"Running command for {user}")
             reply(msg, user_repls[user].run_command(text, timeout=2))
 
             if user not in user_history:
@@ -98,6 +109,7 @@ def run_command(msg: Message, text: str):
 async def clear(bot: IrcBot, match: re.Match, message: Message):
     global user_repls
     user_repls.pop(message.nick, None)
+    user_history.pop(message.nick, None)
     reply(message, "Environment cleared")
 
 
@@ -139,12 +151,24 @@ async def onConnect(bot: IrcBot):
                 await bot.send_message(text, channel)
 
     async def update_loop():
-        """Update cache to eliminate invalid keys."""
+        """Update cache to eliminate invalid keys and monitor COQ_EXPORT_DIR."""
+        global user_repls, user_history
         while True:
-            global user_repls
             user_repls.pop(None, None)
             user_history.pop(None, None)
-            await trio.sleep(10)
+            for file in Path("./").glob("*"):
+                info(f"Found {file=}")
+                if not file.is_file():
+                    continue
+                name = file.name
+                url = paste(file.read_text())
+
+                # TODO what channel should we send this to?
+                for channel in CHANNELS:
+                    await bot.send_message(f"{name}: {url}", channel)
+                file.unlink()
+
+            await trio.sleep(3)
 
     async with trio.open_nursery() as nursery:
         nursery.start_soon(listen_loop, FIFO, message_handler)
