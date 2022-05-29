@@ -11,3 +11,4 @@ re-ircbot==1.5.7
 sniffio==1.2.0
 sortedcontainers==2.4.0
 trio==0.19.0
+requests==2.27.1
