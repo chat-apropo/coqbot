@@ -16,8 +16,11 @@ utils.setHelpHeader(
     "USE: {PREFIX} [coq command here]       - (Notice the space)")
 utils.setHelpBottom(
     "Nice tutorial coq at https://learnxinyminutes.com/docs/coq/")
+utils.setLogging(50)
 utils.setParseOrderTopBottom(True)
 utils.setPrefix(PREFIX)
+
+info = utils.log
 
 FIFO = NamedTemporaryFile(mode='w+b', prefix='coq-repl-',
                           suffix='.fifo', delete=False).name
@@ -46,11 +49,12 @@ def run_command(msg: Message, text: str):
 
     def _run_command(user: str, text: str):
         if user not in user_repls:
+            info(f"Creating new repl for {user}")
             user_repls[user] = replwrap.REPLWrapper(
                 COQTOP_CMD, "Coq <", prompt_change=None)
         reply(msg, user_repls[user].run_command(text, timeout=4))
 
-    multiprocessing.Process(target=_run_command, args=(msg, text)).start()
+    multiprocessing.Process(target=_run_command, args=(msg.nick, text)).start()
 
 
 @utils.arg_command("clear", "Clear environment")
