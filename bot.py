@@ -3,7 +3,7 @@ import trio
 from pexpect import replwrap
 from cachetools import TTLCache
 from tempfile import NamedTemporaryFile
-import multiprocessing
+import threading
 
 from IrcBot.bot import IrcBot, Message, utils
 
@@ -16,7 +16,7 @@ utils.setHelpHeader(
     "USE: {PREFIX} [coq command here]       - (Notice the space)")
 utils.setHelpBottom(
     "Nice tutorial coq at https://learnxinyminutes.com/docs/coq/")
-utils.setLogging(50)
+utils.setLogging(10)
 utils.setParseOrderTopBottom(True)
 utils.setPrefix(PREFIX)
 
@@ -45,16 +45,19 @@ def reply(msg: Message, text: str):
 
 
 def run_command(msg: Message, text: str):
-    global user_repls
 
-    def _run_command(user: str, text: str):
+    def _run_command(msg: Message, text: str):
+        global user_repls
+        info(f"{user_repls=}")
+        user = msg.nick
         if user not in user_repls:
             info(f"Creating new repl for {user}")
             user_repls[user] = replwrap.REPLWrapper(
                 COQTOP_CMD, "Coq <", prompt_change=None)
-        reply(msg, user_repls[user].run_command(text, timeout=4))
+        info(f"Running command for {user}")
+        reply(msg, user_repls[user].run_command(text, timeout=10))
 
-    multiprocessing.Process(target=_run_command, args=(msg.nick, text)).start()
+    threading.Thread(target=_run_command, args=(msg, text)).start()
 
 
 @utils.arg_command("clear", "Clear environment")
