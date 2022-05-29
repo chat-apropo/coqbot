@@ -55,7 +55,7 @@ def run_command(msg: Message, text: str):
             user_repls[user] = replwrap.REPLWrapper(
                 COQTOP_CMD, "Coq <", prompt_change=None)
         info(f"Running command for {user}")
-        reply(msg, user_repls[user].run_command(text, timeout=10))
+        reply(msg, user_repls[user].run_command(text, timeout=2))
 
     threading.Thread(target=_run_command, args=(msg, text)).start()
 
