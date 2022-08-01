@@ -27,6 +27,7 @@ def stop_loop():
     loop = False
     with open(FIFO, "w") as f:
         f.write(".")
+    os.remove(FIFO)
 
 atexit.register(stop_loop)
 
